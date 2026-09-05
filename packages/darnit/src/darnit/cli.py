@@ -164,7 +164,11 @@ def cmd_audit(args: argparse.Namespace) -> int:
         load_effective_config_auto,
         load_effective_config_by_name,
     )
+    from darnit.core.discovery import discover_implementations
     from darnit.filtering import filter_controls, parse_tags_arg
+
+    # Discover and register implementations/handlers from installed plugins
+    discover_implementations()
 
     # Warn about limited functionality in terminal mode
     logger.warning(
