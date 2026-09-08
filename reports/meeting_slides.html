@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Darnit Reproducibility Evaluation</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #121929;
+    --surface-alt: #1a2236;
+    --border: #232f47;
+    --border-accent: rgba(56, 189, 248, 0.35);
+    --text: #f0f4f8;
+    --text-dim: #8c9bb5;
+    --cyan: #38bdf8;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10, 14, 26, 0.95);
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+
+  .brand { font-weight: 700; font-size: 0.9rem; color: var(--cyan); letter-spacing: 0.02em; }
+
+  .nav-hints { font-size: 0.78rem; color: var(--text-dim); display: flex; gap: 0.75rem; align-items: center; }
+  .nav-hints kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    color: var(--cyan);
+    font-family: inherit;
+    font-size: 0.75rem;
+  }
+
+  /* Stage */
+  .stage {
+    flex: 1;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .slide { display: none; width: 100%; animation: fadeIn 0.15s ease-out; }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Typography */
+  .label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.3rem;
+  }
+  .label-cyan { color: var(--cyan); }
+  .label-red { color: var(--red); }
+  .label-purple { color: var(--purple); }
+  .label-green { color: var(--green); }
+  .label-amber { color: var(--amber); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+  }
+
+  .desc {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+  }
+
+  /* Tags */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tag-blue { background: rgba(56,189,248,0.1); color: var(--cyan); border: 1px solid rgba(56,189,248,0.3); }
+  .tag-purple { background: rgba(167,139,250,0.1); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+  .tag-red { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .tag-green { background: rgba(52,211,153,0.1); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .tag-amber { background: rgba(251,191,36,0.1); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+
+  /* Flow */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 0.6rem 0 0.8rem 0;
+  }
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.6rem;
+    flex: 1;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+  .flow-step.highlight { border-color: var(--border-accent); background: rgba(56,189,248,0.04); }
+  .flow-step.alert { border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.04); }
+  .flow-step h4 { font-size: 0.78rem; font-weight: 700; color: var(--cyan); margin-bottom: 0.2rem; }
+  .flow-step p { font-size: 0.72rem; color: #b0bdd0; line-height: 1.3; word-break: break-word; }
+  .flow-arrow { display: flex; align-items: center; padding: 0 0.3rem; color: var(--text-dim); font-size: 1rem; flex-shrink: 0; }
+
+  /* Grid */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.7rem; }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
+  .card-head h3 { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; min-width: 0; }
+
+  .card-footer {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    margin-top: auto;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  /* List */
+  ul.items { list-style: none; }
+  ul.items li {
+    position: relative;
+    padding-left: 1.1rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: #c1cde0;
+    word-break: break-word;
+  }
+  ul.items li::before { content: "•"; position: absolute; left: 0; color: var(--cyan); font-size: 1.1rem; line-height: 1; }
+
+  /* Code */
+  pre {
+    font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow: hidden;
+    max-width: 100%;
+  }
+  code {
+    background: rgba(56,189,248,0.08);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    color: var(--cyan);
+    font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    font-size: 0.82em;
+    word-break: break-word;
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
+  th, td { padding: 0.55rem 0.7rem; text-align: left; border-bottom: 1px solid var(--border); word-break: break-word; }
+  th { background: var(--surface); color: var(--cyan); font-weight: 600; font-size: 0.78rem; }
+  td { background: var(--surface-alt); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Footer */
+  footer {
+    background: rgba(10,14,26,0.95);
+    border-top: 1px solid var(--border);
+    padding: 0.55rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .btn {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.9rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: border-color 0.15s;
+  }
+  .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .counter { color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Darnit Reproducibility Evaluation</div>
+  <div class="nav-hints">
+    <kbd>←</kbd> <kbd>→</kbd> navigate
+    <span style="opacity:0.4">|</span>
+    <kbd>F</kbd> fullscreen
+  </div>
+</header>
+
+<div class="stage">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active" id="slide-1">
+    <div style="text-align:center; max-width:820px; margin:0 auto;">
+      <div class="label label-cyan" style="justify-content:center; display:flex; margin-bottom:0.6rem;">Weekly Sync</div>
+      <h1>Reproducibility Plugin Evaluation</h1>
+      <p class="desc" style="max-width:600px; margin:0 auto 1rem auto;">Experiments testing runtime non-determinism, plugin blind spots, and 7 upstream issues filed</p>
+
+      <div class="card" style="display:inline-block; text-align:left; padding:1rem 1.8rem; border-color:var(--border-accent);">
+        <p style="margin-bottom:0.3rem; font-size:0.88rem;"><strong>Presenter:</strong> Jaydeep</p>
+        <p style="margin-bottom:0.3rem; font-size:0.88rem;"><strong>Component:</strong> <code>darnit-reproducibility</code> (Controls RE-01 to RE-03)</p>
+        <p style="font-size:0.88rem;"><strong>Branch:</strong> <code>reproducibility-evaluation</code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Agenda -->
+  <div class="slide" id="slide-2">
+    <div class="label label-cyan">Overview</div>
+    <h2>What We Tested</h2>
+    <p class="desc">Three experiments, two core engine bugs, and five plugin-level issues.</p>
+
+    <div class="g3">
+      <div class="card">
+        <div class="card-head">
+          <h3>Core Engine Fixes</h3>
+          <span class="tag tag-red">Engine</span>
+        </div>
+        <ul class="items">
+          <li><strong>#427:</strong> CLI audit never registers plugin handlers</li>
+          <li><strong>#428:</strong> Randomized control order from <code>set()</code> in <code>merger.py</code></li>
+        </ul>
+        <div class="card-footer" style="color:var(--green);">Fix tested, ready for PR</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Three Experiments</h3>
+          <span class="tag tag-purple">Evaluation</span>
+        </div>
+        <ul class="items">
+          <li><strong>Exp 1:</strong> NumPy BLAS thread divergence (#429)</li>
+          <li><strong>Exp 2:</strong> C fast-math SIMD vectorization (#432, #433)</li>
+          <li><strong>Exp 3:</strong> NDSS'25 badged artifact audit (#430, #431)</li>
+        </ul>
+        <div class="card-footer" style="color:var(--cyan);">False positives and blind spots identified</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Upstream Alignment</h3>
+          <span class="tag tag-green">Roadmap</span>
+        </div>
+        <ul class="items">
+          <li>Tier 1 Determinism work on <strong>#418</strong></li>
+          <li>Heuristic detection on <strong>#416</strong></li>
+          <li>Scientific reproducibility ontology on <strong>#393</strong></li>
+        </ul>
+        <div class="card-footer" style="color:var(--purple);">Zero duplicate issues created</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Core Bug #427 -->
+  <div class="slide" id="slide-3">
+    <div class="label label-red">Core Engine Fix &bull; Issue #427</div>
+    <h2>Plugin Handler Discovery Failure</h2>
+    <p class="desc"><code>darnit audit</code> never called <code>discover_implementations()</code>, so no plugin handlers were registered.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Root Cause</h3>
+          <span class="tag tag-red">High Severity</span>
+        </div>
+        <ul class="items">
+          <li><code>cmd_audit()</code> in <code>cli.py</code> loads the framework config but skips <code>discover_implementations()</code></li>
+          <li>All plugin handlers (<code>repro_deps_pinned</code>, <code>repro_build_env_declared</code>, etc.) never registered into <code>SieveHandlerRegistry</code></li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(248,113,113,0.3);">
+          <pre style="color:var(--red); font-size:0.74rem; margin:0;">WARNING: handler 'repro_deps_pinned' not found in registry
+Result: Pass 0 | Fail 0 | Warn 5 (all fell back to manual)</pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Fix Applied</h3>
+          <span class="tag tag-green">Tested</span>
+        </div>
+        <p style="font-size:0.85rem; color:#c1cde0; margin-bottom:0.4rem;">Added to <code>cmd_audit()</code> in <code>cli.py</code>:</p>
+        <pre style="background:var(--bg); padding:0.55rem; border-radius:5px; color:var(--green); border:1px solid var(--border); margin-bottom:0.5rem;">from darnit.core.discovery import discover_implementations
+
+# Discover plugin handlers before running audit
+discover_implementations()</pre>
+        <div class="card-footer" style="border-color:rgba(52,211,153,0.3); color:var(--green);">
+          Verified on branch <code>reproducibility-evaluation</code>. Handlers now execute. Ready for PR.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Core Bug #428 -->
+  <div class="slide" id="slide-4">
+    <div class="label label-red">Core Engine Fix &bull; Issue #428</div>
+    <h2>Non-Deterministic Control Ordering</h2>
+    <p class="desc"><code>set()</code> iteration in <code>merger.py:424</code> causes audit output order to vary between runs.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Root Cause</h3>
+          <span class="tag tag-amber">Idempotency</span>
+        </div>
+        <ul class="items">
+          <li>Running <code>darnit audit --show-all</code> twice on the same repo produces different output order</li>
+          <li><code>merger.py:424</code> uses <code>set(framework.controls.keys())</code> which has random iteration order due to <code>PYTHONHASHSEED</code></li>
+        </ul>
+        <pre style="background:var(--bg); padding:0.5rem; color:var(--red); font-size:0.74rem; border:1px solid var(--border); margin-top:0.3rem;">all_control_ids: set[str] = set(framework.controls.keys())
+for control_id in all_control_ids:  # random order each run
+    effective.controls[control_id] = ...</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Connection to #418</h3>
+          <span class="tag tag-blue">Determinism Tier 1</span>
+        </div>
+        <ul class="items">
+          <li>Maintainer opened <strong>#418</strong> for Tier 1 Determinism (sorting file walks, dicts, templates)</li>
+          <li>Our finding at <code>merger.py:424</code> is a concrete instance of that umbrella</li>
+          <li><strong>Fix:</strong> Sort control IDs or preserve framework order before populating <code>effective.controls</code></li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(56,189,248,0.3); color:var(--cyan);">
+          With <code>PYTHONHASHSEED=0</code>, output was byte-identical. Fixing <code>merger.py</code> makes it deterministic by default.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Exp 1 Flow -->
+  <div class="slide" id="slide-5">
+    <div class="label label-purple">Experiment 1</div>
+    <h2>NumPy BLAS Thread Divergence</h2>
+    <p class="desc">Same seed, same code, different thread counts produce different SHA-256 hashes.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <h4>1. Setup</h4>
+        <p>Seed: <code>42</code></p>
+        <p>2500x2500 float32</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <h4>2. Compute</h4>
+        <p><code>np.dot(a, b)</code></p>
+        <p><code>np.sum(c, axis=0)</code></p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">
+        <h4>3. Thread Var</h4>
+        <p>OPENBLAS_NUM_THREADS</p>
+        <p>1 vs 2 vs 4</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step alert">
+        <h4>4. SHA-256</h4>
+        <p>T=1: <code>5dd5...</code></p>
+        <p>T=2: <code>6cb0...</code></p>
+        <p>T=4: <code>049c...</code></p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Why Numbers Diverge</h3>
+          <span class="tag tag-amber">IEEE 754</span>
+        </div>
+        <ul class="items">
+          <li><strong>Float non-associativity:</strong> (a+b)+c != a+(b+c)</li>
+          <li>OpenBLAS partitions matrix blocks across threads, accumulating partial sums in different order</li>
+          <li><strong>Result:</strong> 763/2500 elements (30.52%) differ between 1 and 2 threads</li>
+          <li>Relative diff ~2.44e-7 (near machine epsilon), but SHA-256 hashes are completely different</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Intra-Thread Consistency</h3>
+          <span class="tag tag-green">Deterministic</span>
+        </div>
+        <p style="font-size:0.82rem; color:#c1cde0; margin-bottom:0.35rem;">3 consecutive runs with same thread count produce identical hashes:</p>
+        <pre style="background:var(--bg); padding:0.5rem; border-radius:5px; color:var(--green); border:1px solid var(--border);">T=1: 5dd51c55... (3 runs identical)
+T=2: 6cb047cc... (3 runs identical)
+T=4: 049c52bb... (3 runs identical)</pre>
+        <div class="card-footer">
+          Non-determinism is strictly from cross-thread scheduling, not code-level randomness.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Exp 1 Findings -->
+  <div class="slide" id="slide-6">
+    <div class="label label-amber">Experiment 1 &bull; Findings</div>
+    <h2>Lockfile Blind Spot and Issue #429</h2>
+    <p class="desc">Lockfiles pin packages but not BLAS thread scheduling. Plus a false positive on <code>requirements.txt</code>.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Lockfile Semantic Gap</h3>
+          <span class="tag tag-blue">Conceptual</span>
+        </div>
+        <ul class="items">
+          <li><code>uv.lock</code> got a green PASS on RE-01.01 (DependenciesPinned)</li>
+          <li>But <code>uv.lock</code> pins the Python layer only, it is oblivious to BLAS/C thread scheduling</li>
+          <li>"Fully pinned" code still diverges 30.5% when thread count changes</li>
+        </ul>
+        <div class="card-footer">Lockfiles ensure package integrity but cannot guarantee numerical reproducibility.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>#429: False Positive on requirements.txt</h3>
+          <span class="tag tag-red">Bug</span>
+        </div>
+        <ul class="items">
+          <li><code>requirements.txt</code> with <code>numpy==2.5.2</code> (exact pin) got a hard FAIL</li>
+          <li><code>repro_deps_pinned</code> hardcodes <code>requirements.txt</code> as "loose manifest" without checking if versions are pinned</li>
+        </ul>
+        <pre style="background:var(--bg); padding:0.4rem; color:var(--red); font-size:0.74rem; margin:0.3rem 0; border:1px solid var(--border);">FAIL RE-01.01: Dependency manifests found but no lock files</pre>
+        <div class="card-footer" style="border-color:rgba(248,113,113,0.3);">
+          <strong>Fix:</strong> Parse <code>requirements.txt</code> lines. If all have <code>==</code> or hashes, award PASS/WARN instead of FAIL.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Exp 2 Flow -->
+  <div class="slide" id="slide-7">
+    <div class="label label-purple">Experiment 2</div>
+    <h2>C Compiler Flags and Fast-Math</h2>
+    <p class="desc">How <code>-ffast-math</code> changes floating-point results and produces distinct ELF binaries.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <h4>1. Source</h4>
+        <p><code>sum.c</code></p>
+        <p>Float array accumulation</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <h4>2. Compile</h4>
+        <p><code>-O2</code></p>
+        <p><code>-O3</code></p>
+        <p><code>-O3 -ffast-math</code></p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">
+        <h4>3. ctypes Call</h4>
+        <p><code>run_sum.py</code></p>
+        <p>8,000 floats via <code>libsum.so</code></p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step alert">
+        <h4>4. Output</h4>
+        <p>O2/O3: 10,000,000.0</p>
+        <p>fast-math: 10,000,013.0</p>
+        <p>3 distinct ELF binaries</p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Why Fast-Math Alters Results</h3>
+          <span class="tag tag-amber">SIMD</span>
+        </div>
+        <ul class="items">
+          <li>Under <code>-O2</code>/<code>-O3</code>, compiler preserves IEEE 754 order. Small floats added to large accumulator are lost to precision</li>
+          <li><code>-ffast-math</code> enables <code>-fassociative-math</code>, vectorizes across SIMD lanes (<code>addps</code>), reorders tree to preserve small values</li>
+          <li>All three targets produced completely unique ELF binaries</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>What Darnit Reported</h3>
+          <span class="tag tag-red">0/0/5 Warn</span>
+        </div>
+        <ul class="items">
+          <li>Zero visibility into compilation: did not detect C code compiled into shared library</li>
+          <li><code>repro_hermetic_build</code> opened <code>Makefile</code> but only grepped for <code>curl</code>/<code>wget</code></li>
+          <li>Completely ignored <code>gcc</code> invocations and <code>-ffast-math</code> flag</li>
+        </ul>
+        <div class="card-footer">Darnit currently models repos as interpreted scripts, missing compiled extensions entirely.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Exp 2 Issues -->
+  <div class="slide" id="slide-8">
+    <div class="label label-amber">Experiment 2 &bull; Findings</div>
+    <h2>Issues #432 and #433</h2>
+    <p class="desc">Compiler flag detection and native toolchain awareness gaps.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>#432: Compiler Flags Ignored</h3>
+          <span class="tag tag-red">Blind Spot</span>
+        </div>
+        <ul class="items">
+          <li><code>repro_hermetic_build</code> scanned Makefile and reported "No suspicious patterns found"</li>
+          <li>Neither <code>gcc</code>, <code>clang</code>, nor <code>-ffast-math</code> appeared in evidence or warnings</li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(248,113,113,0.3);">
+          <strong>Fix:</strong> Add inspection for <code>-ffast-math</code>, <code>-Ofast</code>, <code>-fassociative-math</code>, <code>-march=native</code>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>#433: Native Toolchains Overlooked</h3>
+          <span class="tag tag-purple">Heuristic Gap</span>
+        </div>
+        <ul class="items">
+          <li><code>repro_build_env_declared</code> only checks for Docker, Nix, pyenv, nvm. Ignores Makefile toolchain defs (<code>CC = gcc-13</code>) and CMakePresets</li>
+          <li><code>repro_deps_pinned</code> only checks Python/Cargo/npm lockfiles, ignoring Conan/vcpkg/system libs</li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(167,139,250,0.3);">
+          <strong>Fix:</strong> When C/C++ files exist, check native build manifests and guide toward compiler pinning.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Exp 3 Flow -->
+  <div class="slide" id="slide-9">
+    <div class="label label-purple">Experiment 3</div>
+    <h2>NDSS 2025 Research Artifact Audit</h2>
+    <p class="desc">Auditing <code>gittuf-ndss-eval</code>, a Zenodo-badged artifact (Functional + Reproduced).</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <h4>1. Paper</h4>
+        <p>NDSS 2025</p>
+        <p>NYU SSL + NJIT</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <h4>2. Badges</h4>
+        <p>Functional</p>
+        <p>Reproduced</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">
+        <h4>3. Structure</h4>
+        <p>Dockerfile + requirements.txt</p>
+        <p>experiment1-4.py scripts</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step alert">
+        <h4>4. Darnit</h4>
+        <p>Pass:1 | Fail:1 | Warn:3</p>
+        <p>FAIL on requirements.txt</p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Dockerfile Contents</h3>
+          <span class="tag tag-amber">Target</span>
+        </div>
+        <pre style="background:var(--bg); padding:0.5rem; border-radius:5px; font-size:0.74rem; color:#c1cde0; border:1px solid var(--border);">FROM alpine:latest
+RUN apk update && apk add git openssh go python3 py3-click
+WORKDIR /root
+ENV PATH="/root/go/bin:$PATH"
+RUN go install github.com/gittuf/gittuf@v0.7.0
+ADD experiment1.py ... /root/</pre>
+        <div class="card-footer">Floating base tag (<code>alpine:latest</code>) and network install (<code>go install</code>) during build.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Why This Case Matters</h3>
+          <span class="tag tag-blue">Empirical</span>
+        </div>
+        <ul class="items">
+          <li>Created by security researchers to meet academic reproducibility standards</li>
+          <li>Exposes the gap between academic reproducibility (functional execution) and supply chain verification (SLSA, Cosign)</li>
+          <li>Provides real data for Darnit's scientific artifact model</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Exp 3 Issues -->
+  <div class="slide" id="slide-10">
+    <div class="label label-amber">Experiment 3 &bull; Findings</div>
+    <h2>Issues #430, #431, and Roadmap #393</h2>
+    <p class="desc">Hermeticity detection gaps and the academic vs supply-chain ontology question.</p>
+
+    <div class="g3">
+      <div class="card">
+        <div class="card-head">
+          <h3>#430: go install Missed</h3>
+          <span class="tag tag-red">Gap</span>
+        </div>
+        <ul class="items">
+          <li><code>repro_hermetic_build</code> only checks for <code>pip</code>/<code>npm</code> in Dockerfiles</li>
+          <li><code>go install github.com/...</code> downloaded arbitrary modules over the network but was marked clean</li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(248,113,113,0.3);">
+          <strong>Fix:</strong> Add <code>go install</code>, <code>cargo install</code>, <code>gem install</code> to pattern list.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>#431: Superficial Docker PASS</h3>
+          <span class="tag tag-amber">False Positive</span>
+        </div>
+        <ul class="items">
+          <li>Unqualified PASS (0.85) just because <code>Dockerfile</code> exists</li>
+          <li>File uses <code>FROM alpine:latest</code> and unpinned <code>apk add</code></li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(251,191,36,0.3);">
+          <strong>Fix:</strong> Parse <code>FROM</code> for <code>@sha256:</code> vs <code>:latest</code>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Roadmap: #393</h3>
+          <span class="tag tag-blue">Ontology</span>
+        </div>
+        <ul class="items">
+          <li>Academic artifacts use Zenodo DOIs and execution harnesses, not SLSA provenance</li>
+          <li>Our NDSS data provides empirical evidence for this ontology gap</li>
+        </ul>
+        <div class="card-footer" style="border-color:rgba(52,211,153,0.3); color:var(--green);">
+          Direct contribution to issue <strong>#393</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: Summary -->
+  <div class="slide" id="slide-11">
+    <div class="label label-green">Summary</div>
+    <h2>Issues Filed and Next Steps</h2>
+    <p class="desc">7 issues opened on darnitdevorg/darnit:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:8%;">Issue</th>
+          <th style="width:15%;">Type</th>
+          <th style="width:47%;">Summary</th>
+          <th style="width:30%;">Next</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/427" style="color:var(--cyan); font-weight:700;">#427</a></td>
+          <td><span class="tag tag-red">Engine</span></td>
+          <td>CLI <code>cmd_audit</code> never registers plugin handlers</td>
+          <td><strong>Submit PR</strong> (fix tested)</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/428" style="color:var(--cyan); font-weight:700;">#428</a></td>
+          <td><span class="tag tag-red">Engine</span></td>
+          <td>Random control ordering from <code>set()</code> in <code>merger.py</code></td>
+          <td>Align with <a href="https://github.com/darnitdevorg/darnit/issues/418" style="color:var(--blue);">#418</a>, submit PR</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/429" style="color:var(--cyan); font-weight:700;">#429</a></td>
+          <td><span class="tag tag-amber">Plugin</span></td>
+          <td><code>repro_deps_pinned</code> fails exact-pinned <code>requirements.txt</code></td>
+          <td>Draft heuristic line inspection</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/430" style="color:var(--cyan); font-weight:700;">#430</a></td>
+          <td><span class="tag tag-purple">Gap</span></td>
+          <td><code>repro_hermetic_build</code> misses <code>go install</code>, <code>cargo install</code></td>
+          <td>Add to suspicious pattern list</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/431" style="color:var(--cyan); font-weight:700;">#431</a></td>
+          <td><span class="tag tag-amber">Plugin</span></td>
+          <td>False positive on floating <code>:latest</code> Docker images</td>
+          <td>Connect with <a href="https://github.com/darnitdevorg/darnit/issues/416" style="color:var(--blue);">#416</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/432" style="color:var(--cyan); font-weight:700;">#432</a></td>
+          <td><span class="tag tag-purple">Gap</span></td>
+          <td>Makefile scan ignores <code>gcc</code> and <code>-ffast-math</code></td>
+          <td>Propose compiler flag heuristic</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/darnitdevorg/darnit/issues/433" style="color:var(--cyan); font-weight:700;">#433</a></td>
+          <td><span class="tag tag-purple">Gap</span></td>
+          <td>Overlooks native C/C++ build systems</td>
+          <td>Tailor guidance for C sources</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:0.7rem; text-align:center; color:var(--text-dim); font-size:0.8rem;">
+      Reports and experiments: <code>github.com/Jaydeep869/darnit</code> (branch: <code>reproducibility-evaluation</code>)
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <button class="btn" id="prevBtn" onclick="prevSlide()">← Prev</button>
+  <div class="counter" id="slideCounter">1 / 11</div>
+  <button class="btn" id="nextBtn" onclick="nextSlide()">Next →</button>
+</footer>
+
+<script>
+  let cur = 1;
+  const total = 11;
+
+  function show(n) {
+    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+    cur = Math.max(1, Math.min(n, total));
+    document.getElementById(`slide-${cur}`).classList.add('active');
+    document.getElementById('slideCounter').textContent = `${cur} / ${total}`;
+  }
+
+  function nextSlide() { if (cur < total) show(cur + 1); }
+  function prevSlide() { if (cur > 1) show(cur - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); nextSlide(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(); }
+    else if (e.key === 'Home') show(1);
+    else if (e.key === 'End') show(total);
+    else if (e.key.toLowerCase() === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+</script>
+
+</body>
+</html>
